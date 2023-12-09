@@ -18,22 +18,51 @@ const Ring = ({ radius, tubeSize, radialSegments, tubularSegments, color, width,
 
 const MultipleRings = ({ numberOfRings, value }) => {
   const rings = [];
+  const colors = ["white", "#ffe808", "#ffce00", "#ff9a00", "#ff5a00", "#ff0000", "#650707", "#330303"];
 
-  let random = Math.random() * (0.07 - 0.03) + 0.03;
+  // Calcular cuántos anillos pares hay y cuántos anillos por color
+  const totalEvenRings = Math.floor(numberOfRings / 2);
+  const ringsPerColor = Math.floor(totalEvenRings / colors.length);
+  let remainingRings = totalEvenRings % colors.length;
+
+  let currentColorIndex = 0; // Índice para la lista de colores
+  let ringsAssigned = 0; // Contador para asignar los anillos a cada color
 
   for (let i = 0; i < numberOfRings; i++) {
+    // Determinar si el anillo es par o impar
+    const isEvenRing = i % 2 === 0;
+
+    // Asignar color: los anillos pares toman un color de la lista, los impares son negros
+    let ringColor;
+    if (isEvenRing) {
+      ringColor = colors[currentColorIndex];
+      ringsAssigned++;
+
+      // Cambiar al siguiente color si se ha alcanzado el número asignado
+      if (ringsAssigned === ringsPerColor + (remainingRings > 0 ? 1 : 0)) {
+        ringsAssigned = 0; // Reiniciar el contador para el siguiente color
+        currentColorIndex++; // Cambiar al siguiente color
+
+        // Decrementar los anillos restantes si es que se asignó uno adicional
+        if (remainingRings > 0) {
+          remainingRings--;
+        }
+      }
+    } else {
+      ringColor = "black";
+    }
 
     rings.push(
       <Ring
         key={i}
         radius={1}
-        tubeSize={((value === i) || (value === (i + 10) % numberOfRings) || (value === (i + 20) % numberOfRings) || (value === (i + 30) % numberOfRings) || (value === (i + 40) % numberOfRings) || (value === (i + 50) % numberOfRings)) && i % 2 === 0 ? 0.03 : 0.05} // Grosor constante de los anillos
+        tubeSize={((value === i) || (value === (i + 10) % numberOfRings) || (value === (i + 20) % numberOfRings) || (value === (i + 30) % numberOfRings) || (value === (i + 40) % numberOfRings) || (value === (i + 50) % numberOfRings)) ? 0.03 : 0.05}
         radialSegments={30}
         tubularSegments={100}
-        color={i % 2 === 0 ? "orange" : "black"}
-        width={1 + i * 0.05}    // Ancho del anillo incrementándose
-        height={1 + i * 0.05}   // Alto del anillo incrementándose
-        scaleZ={0.1}           // Profundidad constante (haciendo el anillo plano) // Posicionando los anillos en el eje Z
+        color={ringColor}
+        width={1 + i * 0.05}
+        height={1 + i * 0.05}
+        scaleZ={0.1}
       />
     );
   }
@@ -41,27 +70,61 @@ const MultipleRings = ({ numberOfRings, value }) => {
   return <>{rings}</>;
 };
 
-const SphereWithOutline = ({ numberOfRings, value, cameraRef }) => { // Debes recibir numberOfRings como una prop en un objeto
+const SphereWithOutline = ({ numberOfRings, value, cameraRef }) => {
   const rings = [];
+  const colors = ["white", "#ffe808", "#ffce00", "#ff9a00", "#ff5a00", "#ff0000", "#650707", "#330303"];
 
-  const reduce = Math.abs(cameraRef.current?.getPolarAngle() - Math.PI / 2) * 0.9
+  const angle = cameraRef.current?.getPolarAngle(); // Obtiene el valor actual del ángulo
+  const differenceFromMidpoint = Math.abs(1.5 - angle); // Calcula la diferencia absoluta desde 1.5
+  let normalizedDifference = differenceFromMidpoint / 1.5; // Normaliza esta diferencia en el rango de 0 a 1.5
 
-  for (let i = 0; i < numberOfRings; i++) {
+  // Asegurarse de que normalizedDifference no sea negativo
+  normalizedDifference = Math.max(0, normalizedDifference);
+
+  // Escala el valor inicial basado en la diferencia normalizada
+  const scaledNumberOfRings = Math.floor(numberOfRings * (1 - normalizedDifference));
+
+  // Cálculos para la asignación de colores
+  const totalEvenRings = Math.floor(scaledNumberOfRings / 2);
+  const ringsPerColor = Math.floor(totalEvenRings / (colors.length - 1)); // Excluyendo el último color para el último anillo
+  let remainingRings = totalEvenRings % (colors.length - 1);
+
+  let currentColorIndex = 0;
+  let ringsAssigned = 0;
+
+  for (let i = 0; i < scaledNumberOfRings; i++) {
     let size = 0.05;
 
-    if (i == value || (value === (i + 10) % numberOfRings) || (value === (i + 20) % numberOfRings || (value === (i + 30) % numberOfRings) || (value === (i + 40) % numberOfRings)) || (value === (i + 50) % numberOfRings)) {
+    if (i == value || (value === (i + 10) % 50) || (value === (i + 20) % 50 || (value === (i + 30) % 50) || (value === (i + 40) % 50)) || (value === (i + 50) % 50)) {
+      size = 0.03;
+    }
 
-      size = 0.03
+    const isEvenRing = i % 2 === 0;
 
+    let borderColor;
+    if (i === scaledNumberOfRings - 1 && isEvenRing) {
+      borderColor = colors[colors.length - 1]; // Último color para el último anillo par
+    } else if (isEvenRing) {
+      borderColor = colors[currentColorIndex];
+      ringsAssigned++;
+
+      if (ringsAssigned === ringsPerColor + (remainingRings > 0 ? 1 : 0)) {
+        ringsAssigned = 0;
+        currentColorIndex++;
+
+        if (remainingRings > 0) {
+          remainingRings--;
+        }
+      }
+    } else {
+      borderColor = "black";
     }
 
     rings.push(
-      <group key={i}> {/* Agrega un key para cada anillo */}
-        {/* Borde de la esfera */}
-
-        <mesh scale={[(1.04) + i * size * 1 - reduce, 1.04 + i * size * 1 - reduce , 1.04 + i * size * 1 - reduce]}>
+      <group key={i}>
+        <mesh scale={[1.04 + i * size, 1.04 + i * size, 1.04 + i * size]}>
           <sphereGeometry args={[1, 32, 32]} />
-          <meshBasicMaterial color={i % 2 === 0 ? "black" : "orange"} side={THREE.BackSide} />
+          <meshBasicMaterial color={borderColor} side={THREE.BackSide} />
         </mesh>
       </group>
     );
@@ -69,18 +132,14 @@ const SphereWithOutline = ({ numberOfRings, value, cameraRef }) => { // Debes re
 
   return (
     <group>
-      {/* Esfera principal */}
       <mesh>
         <sphereGeometry args={[1, 32, 32]} />
         <meshStandardMaterial color="black" />
       </mesh>
-
-      {/* Bordes de la esfera */}
       {rings}
     </group>
   );
 };
-
 function App() {
 
   const cameraRef = useRef();
@@ -119,7 +178,7 @@ function App() {
       <Canvas camera={{ position: [2, 2, 5], fov: 50 }} onClick={trackCameraAngle}>
         <ambientLight intensity={100} />
         <pointLight position={[100, 100, 100]} />
-        <SphereWithOutline numberOfRings={50} value={value} cameraRef={cameraRef}></SphereWithOutline>
+        <SphereWithOutline numberOfRings={25} value={value} cameraRef={cameraRef}></SphereWithOutline>
         <MultipleRings numberOfRings={50} value={value} />
         <OrbitControls autoRotate autoRotateSpeed={1.0} ref={cameraRef} />
       </Canvas>
